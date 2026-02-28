@@ -18,6 +18,7 @@ const els = {
   previewBtn: document.getElementById("previewBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
   pdfPreview: document.getElementById("pdfPreview"),
+  previewHint: document.getElementById("previewHint"),
   pdfFileName: document.getElementById("pdfFileName"),
   invoiceNo: document.getElementById("invoiceNo"),
   invoiceDate: document.getElementById("invoiceDate"),
@@ -29,6 +30,8 @@ const els = {
   sgst: document.getElementById("sgst"),
   igst: document.getElementById("igst")
 };
+
+let activePreviewUrl = null;
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -52,6 +55,10 @@ function money(v) {
 function safeFileName(name) {
   const clean = (name || "invoice").trim().replace(/[\\/:*?"<>|]+/g, "_");
   return clean || "invoice";
+}
+
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
 }
 
 function createItemRow(item = {}) {
@@ -264,8 +271,26 @@ function buildPdf(state) {
 
 function previewPdf() {
   const doc = buildPdf(getState());
-  const blobUrl = doc.output("bloburl");
-  els.pdfPreview.src = blobUrl;
+  const blob = doc.output("blob");
+
+  if (activePreviewUrl) {
+    URL.revokeObjectURL(activePreviewUrl);
+  }
+  activePreviewUrl = URL.createObjectURL(blob);
+
+  if (isMobileDevice()) {
+    els.pdfPreview.src = "about:blank";
+    if (els.previewHint) {
+      els.previewHint.textContent = "Phone preview opens in a new tab for better compatibility.";
+    }
+    window.open(activePreviewUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  if (els.previewHint) {
+    els.previewHint.textContent = "";
+  }
+  els.pdfPreview.src = activePreviewUrl;
 }
 
 function downloadPdf() {

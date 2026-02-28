@@ -202,6 +202,12 @@ button:hover {
   border-radius: 8px;
 }
 
+.preview-hint {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 @media (max-width: 860px) {
   .app {
     padding: 12px;
