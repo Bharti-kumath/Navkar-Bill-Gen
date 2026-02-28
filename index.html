@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Navkar Bill Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>Navkar Invoice Generator</h1>
+      <p>Fill details, preview PDF, and download with your chosen file name.</p>
+    </header>
+
+    <section class="panel form-panel">
+      <h2>Invoice Form</h2>
+      <form id="invoice-form">
+        <div class="grid two-col">
+          <label>
+            PDF File Name
+            <input type="text" id="pdfFileName" value="invoice_001" required />
+          </label>
+          <label>
+            Invoice Number
+            <input type="text" id="invoiceNo" value="105" required />
+          </label>
+        </div>
+
+        <div class="grid two-col">
+          <label>
+            Date
+            <input type="date" id="invoiceDate" required />
+          </label>
+          <label>
+            Transport Name
+            <input type="text" id="transportName" value="TAKA TUKA" required />
+          </label>
+        </div>
+
+        <div class="grid one-col">
+          <label>
+            Party Name (after M/s)
+            <input type="text" id="partyName" value="VIJAY SHANTI SILK PALACE" required />
+          </label>
+        </div>
+
+        <div class="grid two-col">
+          <label>
+            Party Address
+            <textarea id="partyAddress" rows="3" required>MAIN BAJAR, NR.MANOJ MEDICAL, VADALI (GUJ)</textarea>
+          </label>
+          <label>
+            Party GST Number
+            <input type="text" id="partyGst" value="24AGTPK1703F1ZM" required />
+          </label>
+        </div>
+
+        <div class="items-header">
+          <h3>Items</h3>
+          <button type="button" id="addItemBtn">+ Add Item</button>
+        </div>
+        <div id="itemsContainer" class="items"></div>
+
+        <div class="tax-grid">
+          <label>
+            CGST (%)
+            <input type="number" id="cgst" value="2.5" step="0.01" min="0" />
+          </label>
+          <label>
+            SGST (%)
+            <input type="number" id="sgst" value="2.5" step="0.01" min="0" />
+          </label>
+          <label>
+            IGST (%)
+            <input type="number" id="igst" value="0" step="0.01" min="0" />
+          </label>
+        </div>
+
+        <div class="totals" id="totalsView"></div>
+      </form>
+    </section>
+
+    <section class="panel action-panel">
+      <button id="previewBtn" type="button">Preview PDF</button>
+      <button id="downloadBtn" type="button">Download PDF</button>
+    </section>
+
+    <section class="panel preview-panel">
+      <h2>PDF Preview</h2>
+      <iframe id="pdfPreview" title="PDF Preview"></iframe>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
