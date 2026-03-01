@@ -109,7 +109,7 @@ button {
   display: grid;
   align-items: end;
   gap: 8px;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
 }
 
 .item-field {
@@ -136,6 +136,17 @@ button {
   border-radius: 8px;
   font-weight: 600;
   min-height: 42px;
+}
+
+.item-fixed-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f6f3ec;
+  font-weight: 700;
 }
 
 button {
@@ -171,7 +182,7 @@ button:hover {
 
 .tax-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 8px;
 }

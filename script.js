@@ -5,7 +5,7 @@ const FIXED = {
   company: "NAVKAR CREATION",
   address: "549, UPPER GROUND, ASHOKA TOWER RING ROAD, SURAT-395002",
   gstin: "24AGTPK1703F1ZM",
-  mobile: "M: 903816277, 9974060799",
+  mobile: "M: 9033816277, 9974060799",
   footerLeft: "SUBJECT TO SURAT JURISDICTION",
   footerRight: "For : NAVKAR CREATION"
 };
@@ -26,6 +26,7 @@ const els = {
   partyName: document.getElementById("partyName"),
   partyAddress: document.getElementById("partyAddress"),
   partyGst: document.getElementById("partyGst"),
+  less: document.getElementById("less"),
   cgst: document.getElementById("cgst"),
   sgst: document.getElementById("sgst"),
   igst: document.getElementById("igst")
@@ -52,6 +53,14 @@ function money(v) {
   return toNum(v).toFixed(2);
 }
 
+function roundByHalf(v) {
+  return Math.round(toNum(v));
+}
+
+function upper(v) {
+  return String(v || "").toUpperCase();
+}
+
 function safeFileName(name) {
   const clean = (name || "invoice").trim().replace(/[\\/:*?"<>|]+/g, "_");
   return clean || "invoice";
@@ -67,11 +76,7 @@ function createItemRow(item = {}) {
   row.innerHTML = `
     <label class="item-field">
       <span>Item Name</span>
-      <input type="text" class="item-name" placeholder="e.g. K JAL - PARI" value="${item.name || ""}" required />
-    </label>
-    <label class="item-field">
-      <span>HSN Code</span>
-      <input type="text" class="item-hsn" placeholder="e.g. 5407" value="${item.hsn || ""}" />
+      <input type="text" class="item-name" placeholder="e.g. JAL - PARI" value="${item.name || ""}" required />
     </label>
     <label class="item-field">
       <span>Quantity</span>
@@ -106,7 +111,7 @@ function getItems() {
 
     return {
       name: row.querySelector(".item-name").value.trim(),
-      hsn: row.querySelector(".item-hsn").value.trim(),
+      hsn: "5407",
       qty,
       rate,
       amount
@@ -117,10 +122,14 @@ function getItems() {
 function getState() {
   const items = getItems();
   const subtotal = items.reduce((sum, it) => sum + it.amount, 0);
-  const cgstAmt = subtotal * (toNum(els.cgst.value) / 100);
-  const sgstAmt = subtotal * (toNum(els.sgst.value) / 100);
-  const igstAmt = subtotal * (toNum(els.igst.value) / 100);
-  const grandTotal = subtotal + cgstAmt + sgstAmt + igstAmt;
+  const lessRate = toNum(els.less.value);
+  const lessAmt = roundByHalf(subtotal * (lessRate / 100));
+  const taxableValue = subtotal - lessAmt;
+  const cgstAmt = roundByHalf(taxableValue * (toNum(els.cgst.value) / 100));
+  const sgstAmt = roundByHalf(taxableValue * (toNum(els.sgst.value) / 100));
+  const igstAmt = roundByHalf(taxableValue * (toNum(els.igst.value) / 100));
+  const grandTotalRaw = taxableValue + cgstAmt + sgstAmt + igstAmt;
+  const grandTotal = roundByHalf(grandTotalRaw);
 
   return {
     fileName: safeFileName(els.pdfFileName.value),
@@ -132,12 +141,16 @@ function getState() {
     partyGst: els.partyGst.value.trim(),
     items,
     subtotal,
+    lessRate,
+    lessAmt,
+    taxableValue,
     cgstRate: toNum(els.cgst.value),
     sgstRate: toNum(els.sgst.value),
     igstRate: toNum(els.igst.value),
     cgstAmt,
     sgstAmt,
     igstAmt,
+    grandTotalRaw,
     grandTotal,
     totalQty: items.reduce((s, i) => s + i.qty, 0)
   };
@@ -147,6 +160,8 @@ function recalculate() {
   const s = getState();
   els.totalsView.innerHTML = `
     <div class="total-line"><span>Subtotal</span><span>${money(s.subtotal)}</span></div>
+    <div class="total-line"><span>Less (-)</span><span>${money(s.lessAmt)}</span></div>
+    <div class="total-line"><span>Total</span><span>${money(s.taxableValue)}</span></div>
     <div class="total-line"><span>CGST ${s.cgstRate}%</span><span>${money(s.cgstAmt)}</span></div>
     <div class="total-line"><span>SGST ${s.sgstRate}%</span><span>${money(s.sgstAmt)}</span></div>
     <div class="total-line"><span>IGST ${s.igstRate}%</span><span>${money(s.igstAmt)}</span></div>
@@ -168,8 +183,9 @@ function buildPdf(state) {
   doc.text(FIXED.title, 105, y + 7, { align: "center" });
   doc.line(left, y + 9, right, y + 9);
 
-  doc.setFontSize(10);
+  doc.setFontSize(11.5);
   doc.text(FIXED.company, 105, y + 15, { align: "center" });
+  doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(FIXED.address, 105, y + 20, { align: "center" });
   doc.setFont("helvetica", "bold");
@@ -178,31 +194,63 @@ function buildPdf(state) {
   doc.text(FIXED.mobile, 105, y + 30, { align: "center" });
   doc.line(left, y + 33, right, y + 33);
 
+  const detailsTop = y + 33;
+  const detailsMinBottom = detailsTop + 27;
+  const leftTextStartX = left + 18;
+  const leftColMaxWidth = 99;
+  const partyNameY = detailsTop + 5;
+  const addressStartY = partyNameY + 5;
+
   doc.setFont("helvetica", "bold");
-  doc.text("M/s:", left + 2, y + 38);
-  doc.text(state.partyName || "-", left + 18, y + 38);
+  doc.text("M/s:", left + 2, partyNameY);
+  doc.setFontSize(11);
+  doc.text(upper(state.partyName) || "-", leftTextStartX, partyNameY);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(state.partyAddress || "-", left + 18, y + 44);
+  const addressLines = doc.splitTextToSize(upper(state.partyAddress) || "-", leftColMaxWidth);
+  doc.text(addressLines, leftTextStartX, addressStartY);
+  let leftNextY = addressStartY + ((addressLines.length - 1) * 4.5) + 4.5;
   if (state.partyGst) {
-    doc.text(`GST: ${state.partyGst}`, left + 18, y + 50);
+    doc.text(`GST: ${upper(state.partyGst)}`, leftTextStartX, leftNextY);
+    leftNextY += 6;
   }
   doc.setFont("helvetica", "bold");
-  doc.text(`TRANSPORT : ${state.transportName || "-"}`, left + 2, y + 56);
+  doc.text(`TRANSPORT : ${upper(state.transportName) || "-"}`, left + 2, leftNextY);
 
-  doc.rect(130, y + 33, 35, 27);
-  doc.rect(165, y + 33, 35, 27);
-  doc.text("INVOICE", 147.5, y + 38, { align: "center" });
-  doc.text("NO.", 147.5, y + 43, { align: "center" });
+  const detailsBottom = Math.max(detailsMinBottom, leftNextY + 4);
+  const detailsHeight = detailsBottom - detailsTop;
+
+  doc.rect(130, detailsTop, 30, detailsHeight);
+  doc.rect(160, detailsTop, 40, detailsHeight);
+  doc.text("INVOICE", 145, detailsTop + 5, { align: "center" });
+  doc.text("NO.", 145, detailsTop + 10, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(state.invoiceNo || "-", 147.5, y + 52, { align: "center" });
+  doc.text(upper(state.invoiceNo) || "-", 145, detailsTop + 19, { align: "center" });
 
   doc.setFont("helvetica", "bold");
-  doc.text("DATED", 182.5, y + 38, { align: "center" });
+  doc.text("DATED", 180, detailsTop + 5, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(state.invoiceDate || "-", 182.5, y + 52, { align: "center" });
+  doc.text(state.invoiceDate || "-", 180, detailsTop + 19, { align: "center" });
 
-  const tableTop = y + 60;
-  const tableBottom = y + 245;
+  const taxRows = [];
+  taxRows.push({ label: "LESS (-)", amount: state.lessAmt });
+  taxRows.push({ label: "TOTAL", amount: state.taxableValue, bold: true });
+  taxRows.push({ label: `CGST ${state.cgstRate}%`, amount: state.cgstAmt });
+  taxRows.push({ label: `SGST ${state.sgstRate}%`, amount: state.sgstAmt });
+  taxRows.push({ label: `IGST ${state.igstRate}%`, amount: state.igstAmt });
+
+  const tableTop = detailsBottom;
+  const footerTop = y + 265;
+  const footerBottom = y + 275;
+  const minSignHeight = 20;
+  const summaryBottom = footerTop - minSignHeight;
+  const summaryHeight = 9 + (taxRows.length * 7) + 10;
+  const maxTableBottom = summaryBottom - summaryHeight;
+  const minParticularsHeight = 24 + (state.items.length * 7);
+  const targetParticularsHeight = 120;
+  const particularsHeight = Math.max(minParticularsHeight, targetParticularsHeight);
+  const tableBottom = Math.min(tableTop + particularsHeight, maxTableBottom);
+  const summaryTop = tableBottom;
 
   doc.line(left, tableTop, right, tableTop);
   doc.line(left, tableBottom, right, tableBottom);
@@ -226,45 +274,64 @@ function buildPdf(state) {
   let rowY = tableTop + 14;
   doc.setFont("helvetica", "normal");
   state.items.forEach((item) => {
-    if (rowY > tableBottom - 45) return;
-    doc.text(item.name || "-", left + 2, rowY);
-    doc.text(item.hsn || "-", 85, rowY, { align: "center" });
+    if (rowY > tableBottom - 4) return;
+    const symbolCenterX = left + 4.3;
+    const symbolCenterY = rowY - 1.3;
+    const itemLabel = upper(item.name) || "-";
+    doc.circle(symbolCenterX, symbolCenterY, 2.2);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text("K", symbolCenterX, symbolCenterY + 0.9, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(itemLabel, left + 10.3, rowY);
+    doc.text(upper(item.hsn) || "-", 85, rowY, { align: "center" });
     doc.text(String(item.qty || 0), 105, rowY, { align: "center" });
     doc.text("PCS", 122.5, rowY, { align: "center" });
     doc.text(money(item.rate), 145, rowY, { align: "center" });
     doc.text(money(item.amount), 180, rowY, { align: "center" });
     rowY += 7;
   });
-
-  const summaryTop = tableBottom - 30;
   doc.line(left, summaryTop, right, summaryTop);
 
   doc.setFont("helvetica", "bold");
   doc.text("TOTAL", 42.5, summaryTop + 6, { align: "center" });
   doc.text(String(state.totalQty), 105, summaryTop + 6, { align: "center" });
-  doc.text(money(state.subtotal), 180, summaryTop + 6, { align: "center" });
+  doc.text(money(state.subtotal), 198, summaryTop + 6, { align: "right" });
+  doc.line(left, summaryTop + 9, right, summaryTop + 9);
+  [75, 95, 115, 130, 160].forEach((x) => doc.line(x, summaryTop, x, summaryTop + 9));
 
-  doc.line(130, summaryTop + 9, right, summaryTop + 9);
-  doc.line(130, summaryTop + 16, right, summaryTop + 16);
-  doc.line(130, summaryTop + 23, right, summaryTop + 23);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(`CGST ${state.cgstRate}%`, 132, summaryTop + 13);
-  doc.text(money(state.cgstAmt), 198, summaryTop + 13, { align: "right" });
-  doc.text(`SGST ${state.sgstRate}%`, 132, summaryTop + 20);
-  doc.text(money(state.sgstAmt), 198, summaryTop + 20, { align: "right" });
-  doc.text(`IGST ${state.igstRate}%`, 132, summaryTop + 27);
-  doc.text(money(state.igstAmt), 198, summaryTop + 27, { align: "right" });
+  taxRows.forEach((row, idx) => {
+    const lineY = summaryTop + 9 + ((idx + 1) * 7);
+    const textY = summaryTop + 13 + (idx * 7);
+    const displayAmount = money(row.amount);
+    doc.line(130, lineY, right, lineY);
+    doc.setFont("helvetica", row.bold ? "bold" : "normal");
+    doc.text(row.label, 132, textY);
+    doc.text(displayAmount, 198, textY, { align: "right" });
+  });
 
   doc.setFont("helvetica", "bold");
-  doc.rect(130, summaryTop + 30, 70, 10);
-  doc.text("G. TOTAL", 132, summaryTop + 36);
-  doc.text(money(state.grandTotal), 198, summaryTop + 36, { align: "right" });
+  const grandTop = summaryTop + 9 + (taxRows.length * 7);
+  doc.rect(130, grandTop, 70, 10);
+  doc.text("G. TOTAL", 132, grandTop + 6);
+  doc.text(money(state.grandTotal), 198, grandTop + 6, { align: "right" });
+  const signTop = grandTop + 10;
+  const signBottom = footerTop;
+  doc.line(130, summaryTop, 130, signTop);
 
-  doc.line(left, y + 265, right, y + 265);
-  doc.line(130, y + 265, 130, y + 275);
-  doc.text(FIXED.footerLeft, 70, y + 271, { align: "center" });
-  doc.text(FIXED.footerRight, 165, y + 271, { align: "center" });
+  doc.line(left, signTop, right, signTop);
+  doc.line(left, signBottom, right, signBottom);
+  doc.line(130, signTop, 130, signBottom);
+  doc.setFont("helvetica", "bold");
+  doc.text("SIGN", 70, signBottom - 3, { align: "center" });
+  doc.text("STAMP", 165, signBottom - 3, { align: "center" });
+
+  doc.line(left, footerTop, right, footerTop);
+  doc.line(130, footerTop, 130, footerBottom);
+  doc.setFont("helvetica", "bold");
+  doc.text(FIXED.footerLeft, 70, footerTop + 6, { align: "center" });
+  doc.text(FIXED.footerRight, 165, footerTop + 6, { align: "center" });
 
   return doc;
 }
@@ -302,15 +369,15 @@ function downloadPdf() {
 function init() {
   els.invoiceDate.value = todayISO();
 
-  createItemRow({ name: "K JAL - PARI", hsn: "5407", qty: 20, rate: 675 });
-  createItemRow({ name: "K DOOR PARI", hsn: "5407", qty: 10, rate: 675 });
+  createItemRow({ name: "JAL - PARI", hsn: "5407", qty: 20, rate: 675 });
+  createItemRow({ name: "DOOR PARI", hsn: "5407", qty: 10, rate: 675 });
 
   els.addItemBtn.addEventListener("click", () => {
     createItemRow();
     recalculate();
   });
 
-  [els.cgst, els.sgst, els.igst, els.pdfFileName, els.invoiceNo, els.invoiceDate, els.transportName, els.partyName, els.partyAddress, els.partyGst]
+  [els.less, els.cgst, els.sgst, els.igst, els.pdfFileName, els.invoiceNo, els.invoiceDate, els.transportName, els.partyName, els.partyAddress, els.partyGst]
     .forEach((el) => el.addEventListener("input", recalculate));
 
   els.previewBtn.addEventListener("click", previewPdf);
