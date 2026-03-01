@@ -17,6 +17,7 @@ const els = {
   totalsView: document.getElementById("totalsView"),
   previewBtn: document.getElementById("previewBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
+  resetBtn: document.getElementById("resetBtn"),
   pdfPreview: document.getElementById("pdfPreview"),
   previewHint: document.getElementById("previewHint"),
   pdfFileName: document.getElementById("pdfFileName"),
@@ -366,12 +367,24 @@ function downloadPdf() {
   doc.save(`${s.fileName}.pdf`);
 }
 
+function resetForm() {
+  els.pdfFileName.value = "";
+  els.invoiceNo.value = "";
+  els.invoiceDate.value = "";
+  els.transportName.value = "";
+  els.partyName.value = "";
+  els.partyAddress.value = "";
+  els.partyGst.value = "";
+  els.less.value = "";
+  els.cgst.value = "2.5";
+  els.sgst.value = "2.5";
+  els.igst.value = "0";
+  els.itemsContainer.innerHTML = "";
+  recalculate();
+  previewPdf();
+}
+
 function init() {
-  els.invoiceDate.value = todayISO();
-
-  createItemRow({ name: "JAL - PARI", hsn: "5407", qty: 20, rate: 675 });
-  createItemRow({ name: "DOOR PARI", hsn: "5407", qty: 10, rate: 675 });
-
   els.addItemBtn.addEventListener("click", () => {
     createItemRow();
     recalculate();
@@ -382,6 +395,7 @@ function init() {
 
   els.previewBtn.addEventListener("click", previewPdf);
   els.downloadBtn.addEventListener("click", downloadPdf);
+  els.resetBtn.addEventListener("click", resetForm);
 
   recalculate();
   previewPdf();
